@@ -6,10 +6,11 @@ code SEGMENT
 start:
     MOV AX,data  ;将data首地址赋值给AX                
     MOV DS,AX    ;将AX赋值给DS,使DS指向data
+    ;  LEA: Load Effective Address  有效地址送寄存器
     LEA DX,hello ;使DX指向hello首地址
     MOV AH,09h   ;给AH设置参数09H
     INT 21h      ;执行AH中设置的09H号功能。输出DS指向的DX指向的字符串hello
-    MOV AX,4C00h ;给AH设置参数4C00h
-    int 21h      ;调用4C00h号功能，结束程序
+    MOV AH,4Ch   ;给AH设置参数4Ch 或给AX设置参数4C00h
+    INT 21h      ;调用4C00h号功能，结束程序
 code ENDS
 END start

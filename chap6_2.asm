@@ -1,47 +1,52 @@
-DATA SEGMENT
-        MESSAGE DB 'TPCA interrupt1',13,10 ,'$'    
-        N      DW 10
-DATA ENDS
-CODE SEGMENT
-ASSUME CS:CODE,DS:DATA
-START:  MOV AX,DATA
-        MOV DS,AX
-        ;---------------------------------以上为初始化
-        MOV DX, OFFSET INT10 ;INT10 is the address of the interrupt handler
-        MOV AX, 2572H       ;2572H is the interrupt number
-        INT 21H             ;call the interrupt
-        MOV AL,21H          ;21H is the interrupt number
-        AND AL,0FBH         ;0FBH is the mask  取消屏蔽D2的中断，1111 1011
-        OUT 21H,AL          ;写回主片改变后的屏蔽字
-        ;---------------------------------以上为调用中断
-        MOV AL,0A1H        ;0A1H is the interrupt number
-        AND AL,0FBH        ;0FBH is the mask   取消屏蔽D2的中断，1111 1011
-        OUT 21H,AL         ;写回从片改变后的屏蔽字
-        ;---------------------------------以上为调用中断
-        MOV CX,N
-        STI                ;enable interrupt
-WAITLOOP:   
-        NOP
-        JMP WAITLOOP
-INT10:   MOV AX,DATA
-        MOV DS,AX
-        ;---------------------------------以上为初始化
-        MOV AH,09H        ;09H is the interrupt number
-        MOV DX,OFFSET MESSAGE   ;MESSAGE is the address of the message
-        INT 21H          ;call the interrupt
-        MOV AL,20H       ;20H is the interrupt number
-        OUT 20H,AL       ;发出中断结束命令 EOI，IRR 复位
-        LOOP DLOOP       ;循环 目的是使CX的值减1，直到CX=0
-        ;---------------关中断
-        IN AL,21H        
-        OR AL,08H     ;08H is the mask
-        OUT 21H,AL
-        ;---------------开中断
-        IN AL,21H
-        AND AL,0F7H
-        OUT 21H,AL
-        MOV AH,4CH
+DATA SEGMENT 
+        INTA00 EQU 20H 
+        INTA01 EQU 21H 
+        INTXA00 EQU 0A0H 
+        INTXA01 EQU 0A1H 
+DATA ENDS 
+CODE SEGMENT 
+ASSUME DS:DATA, CS:CODE 
+START: 
+        MOV AX,CS 
+        MOV DS,AX 
+        MOV DX,OFFSET INTPROC 
+        MOV AX,2572H 				;给中断向量 
+        INT 21H 
+        CLI 								;关中断 
+        MOV DX, INTA01 
+        IN AL, DX 
+        AND AL, 0FBH 
+        OUT DX, AL 					;设置屏蔽字 MOV DX, INTXA01 
+        MOV AL, 0F2H 				;设置从机屏蔽字
+        OUT DX, AL 
+        MOV BX, 10					; INTERUPTS TIMES 
+        STI 								;开中断 
+LL: 		JMP LL 
+INTPROC: 
+        MOV AX, DATA 
+        MOV DS, AX 
+        MOV DL, 0FH 
+        MOV AH, 02H 
         INT 21H
-DLOOP:  IRET             ;return to the interrupted program
-CODE ENDS
+        MOV DX, INTA00 
+        MOV AL, 20H 
+        OUT DX, AL 					;主机 IRR 复位 
+        MOV DX, INTXA00 
+        MOV AL, 20H 
+        OUT DX, AL 					;从机 IRR 复位 
+        SUB BX, 1 
+        JNZ NEXT 
+        MOV DX,INTA01 			;主机中断结束 
+        IN AL,DX 
+        OR AL,04H 
+        OUT DX,AL 
+        MOV DX, INTXA01 		;主机中断结束 
+        IN AL, DX 
+        OR AL, 04H 
+        OUT DX, AL 
+        STI 
+        MOV AH,4CH 
+        INT 21H 
+NEXT: 	IRET 
+CODE ENDS 
 END START

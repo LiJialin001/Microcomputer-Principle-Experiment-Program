@@ -1,3 +1,4 @@
+; I/O 地址译码
 DATA SEGMENT
     TIMES DW 0FFH ;循环次数
 DATA ENDS
